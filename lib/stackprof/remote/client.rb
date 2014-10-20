@@ -8,11 +8,13 @@ module StackProf
     # requests to a host running the StackProf::Remote::Middleware
     class Client
       attr_reader :host
+      attr_reader :port
 
       def initialize(host, wait)
-        @host = host
+        uri = check_and_parse_host(host)
+        @host = uri.host
+        @port = uri.port
         @wait = (wait || 30).to_i
-        check_host
       end
 
       def run
@@ -26,7 +28,7 @@ module StackProf
       def start
         puts "=== StackProf on #{host} ==="
         puts "Starting"
-        result = Net::HTTP.get(host, "/__stackprof__/start")
+        result = Net::HTTP.get(host, "/__stackprof__/start", port)
         puts "[#{host}] #{result}"
         if result !~ /Started/
           raise "Did not start successfully"
@@ -39,7 +41,7 @@ module StackProf
       end
 
       def fetch_results
-        response = Net::HTTP.get_response(host, "/__stackprof__/stop")
+        response = Net::HTTP.get_response(host, "/__stackprof__/stop", port)
         if response.code == '200'
           @results = response.body
           if !@results
@@ -69,10 +71,12 @@ module StackProf
       end
 
       private
-      def check_host
-        if !host || !URI.parse(host)
+
+      def check_and_parse_host(host)
+        unless host && (uri = URI.parse(host))
           raise "Please supply a valid host to connect to (#{host})"
         end
+        uri
       end
     end
   end
